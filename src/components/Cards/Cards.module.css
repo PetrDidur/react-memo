@@ -70,3 +70,10 @@
 
   margin-bottom: -12px;
 }
+.errCountContainer {
+  display: flex;
+  gap: 10px;
+  margin-top: 10px;
+  font-family: StratosSkyeng;
+  color: #fff;
+}

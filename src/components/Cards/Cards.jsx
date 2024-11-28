@@ -13,6 +13,7 @@ const STATUS_WON = "STATUS_WON";
 const STATUS_IN_PROGRESS = "STATUS_IN_PROGRESS";
 // Начало игры: игрок видит все карты в течении нескольких секунд
 const STATUS_PREVIEW = "STATUS_PREVIEW";
+// const MAX_ERRORS = 3;
 
 function getTimerValue(startDate, endDate) {
   if (!startDate && !endDate) {
@@ -40,7 +41,7 @@ function getTimerValue(startDate, endDate) {
  * pairsCount - сколько пар будет в игре
  * previewSeconds - сколько секунд пользователь будет видеть все карты открытыми до начала игры
  */
-export function Cards({ pairsCount = 3, previewSeconds = 5 }) {
+export function Cards({ pairsCount = 3, previewSeconds = 5, isErrorLimitedMode }) {
   // В cards лежит игровое поле - массив карт и их состояние открыта\закрыта
   const [cards, setCards] = useState([]);
   // Текущий статус игры
@@ -50,6 +51,7 @@ export function Cards({ pairsCount = 3, previewSeconds = 5 }) {
   const [gameStartDate, setGameStartDate] = useState(null);
   // Дата конца игры
   const [gameEndDate, setGameEndDate] = useState(null);
+  const [errorsCount, setErrorsCount] = useState(0);
 
   // Стейт для таймера, высчитывается в setInteval на основе gameStartDate и gameEndDate
   const [timer, setTimer] = useState({
@@ -97,11 +99,11 @@ export function Cards({ pairsCount = 3, previewSeconds = 5 }) {
         ...card,
         open: true,
       };
-    });
+    }); //Проверить
 
     setCards(nextCards);
 
-    const isPlayerWon = nextCards.every(card => card.open);
+    const isPlayerWon = nextCards.every(card => card.open); // Проверить!
 
     // Победа - все карты на поле открыты
     if (isPlayerWon) {
@@ -114,7 +116,7 @@ export function Cards({ pairsCount = 3, previewSeconds = 5 }) {
 
     // Ищем открытые карты, у которых нет пары среди других открытых
     const openCardsWithoutPair = openCards.filter(card => {
-      const sameCards = openCards.filter(openCard => card.suit === openCard.suit && card.rank === openCard.rank);
+      const sameCards = openCards.filter(openCard => card.suit === openCard.suit && card.rank === openCard.rank); // непонстно
 
       if (sameCards.length < 2) {
         return true;
@@ -122,15 +124,27 @@ export function Cards({ pairsCount = 3, previewSeconds = 5 }) {
 
       return false;
     });
+    if (isErrorLimitedMode) {
+      const playerLost = openCardsWithoutPair.length >= 2;
+      if (playerLost) {
+        setErrorsCount(prevError => {
+          const newErrorCount = prevError + 1;
+          if (newErrorCount >= 3) {
+            finishGame(STATUS_LOST);
+            return prevError + 1;
+          }
+          return newErrorCount;
+        });
+      }
+    } else {
+      const playerLost = openCardsWithoutPair.length >= 2;
 
-    const playerLost = openCardsWithoutPair.length >= 2;
-
-    // "Игрок проиграл", т.к на поле есть две открытые карты без пары
-    if (playerLost) {
-      finishGame(STATUS_LOST);
-      return;
+      // "Игрок проиграл", т.к на поле есть две открытые карты без пары
+      if (playerLost) {
+        finishGame(STATUS_LOST);
+        return;
+      }
     }
-
     // ... игра продолжается
   };
 
@@ -209,7 +223,12 @@ export function Cards({ pairsCount = 3, previewSeconds = 5 }) {
           />
         ))}
       </div>
-
+      {isErrorLimitedMode && (
+        <div className={styles.errCountContainer}>
+          <p className={styles.countName}>Счетчик ошибок</p>
+          <p className={styles.countErr}>{errorsCount}</p>
+        </div>
+      )}
       {isGameEnded ? (
         <div className={styles.modalContainer}>
           <EndGameModal
